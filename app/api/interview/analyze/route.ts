@@ -1,20 +1,51 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
-    const { sessionId, questionId, transcript } = await request.json();
-    
-    // Mock AI analysis - replace with actual OpenAI integration
-    const analysis = {
-      score: Math.floor(Math.random() * 30) + 70, // 70-100
-      feedback: "Great response! You provided specific details and showed enthusiasm. Consider adding more quantifiable achievements to strengthen your answer.",
-      strengths: ["Clear communication", "Specific examples", "Enthusiasm"],
-      improvements: ["Add quantifiable results", "Structure answer better"],
-      duration: Math.floor(Math.random() * 60) + 30 // 30-90 seconds
-    };
+    const { sessionId, questionId, transcript, question } =
+      await request.json();
 
-    return NextResponse.json({ analysis });
+    if (!transcript) {
+      return NextResponse.json(
+        { error: "No transcript provided" },
+        { status: 400 }
+      );
+    }
+
+    // Call local LLM analysis server
+    const response = await fetch("http://localhost:5002/analyze", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        transcript,
+        question: question || "Tell me about yourself",
+      }),
+    });
+    console.log("Transcript received:", transcript);
+    console.log("Question:", question);
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return NextResponse.json(
+        {
+          error: errorData.error || "Analysis service unavailable",
+        },
+        { status: response.status }
+      );
+    }
+
+    const data = await response.json();
+    return NextResponse.json(data);
   } catch (error) {
-    return NextResponse.json({ error: 'Analysis failed' }, { status: 500 });
+    console.error("Analysis error:", error);
+    return NextResponse.json(
+      {
+        error:
+          "Analysis failed. Make sure the LLM server is running on localhost:5002",
+      },
+      { status: 500 }
+    );
   }
 }

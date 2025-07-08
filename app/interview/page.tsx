@@ -1,33 +1,40 @@
-"use client"
+"use client";
 
-import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { 
-  Mic, 
-  MicOff, 
-  Video, 
-  VideoOff, 
-  Play, 
-  Square, 
+import { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import {
+  Mic,
+  MicOff,
+  Video,
+  VideoOff,
+  Play,
+  Square,
   RotateCcw,
   Brain,
   Clock,
   Target,
   CheckCircle,
-  Lightbulb
-} from 'lucide-react';
-import Webcam from 'react-webcam';
-import { DashboardHeader } from '@/components/dashboard/dashboard-header';
-import { useRouter } from 'next/navigation';
+  Lightbulb,
+} from "lucide-react";
+import Webcam from "react-webcam";
+import { DashboardHeader } from "@/components/dashboard/dashboard-header";
+import { useRouter } from "next/navigation";
+import AvatarViewer from "@/components/AvatarViewer";
+import dynamic from "next/dynamic";
+import { Canvas } from "@react-three/fiber";
+import { Environment, OrbitControls } from "@react-three/drei";
+
+const Avatar = dynamic(() => import("@/components/Avatar"), { ssr: false });
+
 interface Question {
   id: string;
   text: string;
   category: string;
-  difficulty: 'Easy' | 'Medium' | 'Hard';
+  difficulty: "Easy" | "Medium" | "Hard";
   timeLimit: number;
   tips: string;
 }
@@ -44,37 +51,37 @@ interface InterviewState {
 
 const mockQuestions: Question[] = [
   {
-    id: '1',
-    text: 'Tell me about yourself and your professional background.',
-    category: 'General',
-    difficulty: 'Easy',
+    id: "1",
+    text: "Tell me about yourself and your professional background.",
+    category: "General",
+    difficulty: "Easy",
     timeLimit: 120,
-    tips: 'Keep it concise, focus on relevant experience, and connect to the role.'
+    tips: "Keep it concise, focus on relevant experience, and connect to the role.",
   },
   {
-    id: '2',
-    text: 'Describe a challenging project you worked on and how you overcame the obstacles.',
-    category: 'Behavioral',
-    difficulty: 'Medium',
+    id: "2",
+    text: "Describe a challenging project you worked on and how you overcame the obstacles.",
+    category: "Behavioral",
+    difficulty: "Medium",
     timeLimit: 180,
-    tips: 'Use the STAR method: Situation, Task, Action, Result.'
+    tips: "Use the STAR method: Situation, Task, Action, Result.",
   },
   {
-    id: '3',
-    text: 'How do you handle working under pressure and tight deadlines?',
-    category: 'Behavioral',
-    difficulty: 'Medium',
+    id: "3",
+    text: "How do you handle working under pressure and tight deadlines?",
+    category: "Behavioral",
+    difficulty: "Medium",
     timeLimit: 150,
-    tips: 'Provide specific examples and mention stress management techniques.'
+    tips: "Provide specific examples and mention stress management techniques.",
   },
   {
-    id: '4',
-    text: 'Where do you see yourself in 5 years and how does this role align with your goals?',
-    category: 'Career',
-    difficulty: 'Easy',
+    id: "4",
+    text: "Where do you see yourself in 5 years and how does this role align with your goals?",
+    category: "Career",
+    difficulty: "Easy",
     timeLimit: 120,
-    tips: 'Show ambition while aligning with the company\'s growth opportunities.'
-  }
+    tips: "Show ambition while aligning with the company's growth opportunities.",
+  },
 ];
 
 export default function InterviewPage() {
@@ -89,23 +96,25 @@ export default function InterviewPage() {
     timeElapsed: 0,
     isRecording: false,
     micEnabled: true,
-    videoEnabled: true
+    videoEnabled: true,
   });
 
-  const [transcript, setTranscript] = useState('');
-  const [aiFeedback, setAiFeedback] = useState('');
+  const [transcript, setTranscript] = useState("");
+  const [aiFeedback, setAiFeedback] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [confidenceScore, setConfidenceScore] = useState(0);
-  const [gradeScore, setGradeScore] = useState('');
-  const [completedQuestions, setCompletedQuestions] = useState<boolean[]>(new Array(mockQuestions.length).fill(false));
+  const [gradeScore, setGradeScore] = useState("");
+  const [completedQuestions, setCompletedQuestions] = useState<boolean[]>(
+    new Array(mockQuestions.length).fill(false)
+  );
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (interviewState.isActive) {
       interval = setInterval(() => {
-        setInterviewState(prev => ({
+        setInterviewState((prev) => ({
           ...prev,
-          timeElapsed: prev.timeElapsed + 1
+          timeElapsed: prev.timeElapsed + 1,
         }));
       }, 1000);
     }
@@ -113,11 +122,11 @@ export default function InterviewPage() {
   }, [interviewState.isActive]);
 
   const startInterview = () => {
-    setInterviewState(prev => ({
+    setInterviewState((prev) => ({
       ...prev,
       isActive: true,
       currentQuestion: 0,
-      timeElapsed: 0
+      timeElapsed: 0,
     }));
   };
 
@@ -125,12 +134,12 @@ export default function InterviewPage() {
     if (interviewState.isRecording) {
       stopRecording();
     }
-    setInterviewState(prev => ({
+    setInterviewState((prev) => ({
       ...prev,
       isActive: false,
-      isRecording: false
+      isRecording: false,
     }));
-    router.push('/feedback');
+    router.push("/feedback");
   };
 
   const nextQuestion = () => {
@@ -140,94 +149,225 @@ export default function InterviewPage() {
     setCompletedQuestions(newCompletedQuestions);
 
     if (interviewState.currentQuestion < interviewState.totalQuestions - 1) {
-      setInterviewState(prev => ({
+      setInterviewState((prev) => ({
         ...prev,
-        currentQuestion: prev.currentQuestion + 1
+        currentQuestion: prev.currentQuestion + 1,
       }));
-      setTranscript('');
-      setAiFeedback('');
+      setTranscript("");
+      setAiFeedback("");
       setConfidenceScore(0);
-      setGradeScore('');
+      setGradeScore("");
     } else {
       endInterview();
     }
   };
+  // Add this ref at the top of your component (alongside other refs)
+  const recordedChunksRef = useRef<Blob[]>([]);
 
   const startRecording = () => {
     if (webcamRef.current && webcamRef.current.stream) {
-      const mediaRecorder = new MediaRecorder(webcamRef.current.stream, {
-        mimeType: 'video/webm'
+      // Get both audio and video tracks, but we'll only use audio
+      const stream = webcamRef.current.stream;
+      const audioTracks = stream.getAudioTracks();
+
+      if (audioTracks.length === 0) {
+        console.error("No audio tracks available");
+        return;
+      }
+
+      // Create a new MediaStream with only audio tracks
+      const audioStream = new MediaStream(audioTracks);
+
+      // Check for supported MIME types
+      const mimeTypes = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/wav",
+        "audio/mp4",
+        "audio/mpeg",
+      ];
+
+      let selectedMimeType = "audio/webm";
+      for (const mimeType of mimeTypes) {
+        if (MediaRecorder.isTypeSupported(mimeType)) {
+          selectedMimeType = mimeType;
+          break;
+        }
+      }
+
+      const mediaRecorder = new MediaRecorder(audioStream, {
+        mimeType: selectedMimeType,
       });
-      
+
       mediaRecorderRef.current = mediaRecorder;
-      setRecordedChunks([]);
-      
+      recordedChunksRef.current = []; // Reset chunks in ref
+      setRecordedChunks([]); // Reset state
+
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
-          setRecordedChunks(prev => [...prev, event.data]);
+          console.log("Received data chunk:", event.data.size, "bytes");
+          recordedChunksRef.current.push(event.data); // Store in ref
+          setRecordedChunks((prev) => [...prev, event.data]); // Update state for UI
         }
       };
-      
-      mediaRecorder.start();
-      setInterviewState(prev => ({ ...prev, isRecording: true }));
+
+      mediaRecorder.onstop = async () => {
+        console.log(
+          "Recording stopped, chunks:",
+          recordedChunksRef.current.length
+        );
+        setInterviewState((prev) => ({ ...prev, isRecording: false }));
+        setIsProcessing(true);
+
+        try {
+          // Use the ref data directly (not the state)
+          const chunks = recordedChunksRef.current;
+
+          if (chunks.length === 0) {
+            throw new Error("No audio data recorded");
+          }
+
+          // Combine recorded chunks into a single Blob
+          const blob = new Blob(chunks, {
+            type: chunks[0]?.type || selectedMimeType,
+          });
+
+          console.log("Created blob:", blob.size, "bytes, type:", blob.type);
+
+          if (blob.size === 0) {
+            throw new Error("Audio blob is empty");
+          }
+
+          // 1. Send audio to /api/transcribe
+          const formData = new FormData();
+          formData.append("audio", blob, "recording.webm");
+
+          console.log("Sending audio to transcription API...");
+          let transcriptText = "";
+
+          const transcribeRes = await fetch("/api/transcribe", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!transcribeRes.ok) {
+            const error = await transcribeRes.json();
+            console.error("Transcribe failed:", error);
+            throw new Error(error?.error || "Transcription failed");
+          }
+
+          const transcribeData = await transcribeRes.json();
+          transcriptText = transcribeData.transcript || "";
+          setTranscript(transcriptText);
+          console.log("Transcription successful:", transcriptText);
+
+          // 2. Send transcript to /api/interview/analyze
+          if (transcriptText) {
+            try {
+              const analyzeRes = await fetch("/api/interview/analyze", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  transcript: transcriptText,
+                  question: mockQuestions[interviewState.currentQuestion].text,
+                }),
+              });
+
+              if (analyzeRes.ok) {
+                const analyzeData = await analyzeRes.json();
+                const analysis = analyzeData.analysis || {};
+                setAiFeedback(analysis.feedback || "No feedback.");
+                setConfidenceScore(analysis.score || 0);
+                setGradeScore(analysis.grade || "N/A");
+              }
+            } catch (err) {
+              console.error("Analysis error:", err);
+              setAiFeedback("Analysis failed.");
+              setConfidenceScore(0);
+              setGradeScore("N/A");
+            }
+          }
+        } catch (error) {
+          console.error("Processing error:", error);
+          if (error instanceof Error) {
+            setTranscript("Error: " + error.message);
+          } else {
+            setTranscript("An unknown error occurred.");
+          }
+          setAiFeedback("Processing failed.");
+          setConfidenceScore(0);
+          setGradeScore("N/A");
+        } finally {
+          setIsProcessing(false);
+        }
+      };
+
+      mediaRecorder.start(1000); // Record in 1-second chunks
+      setInterviewState((prev) => ({ ...prev, isRecording: true }));
+      console.log("Recording started with MIME type:", selectedMimeType);
     }
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current) {
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state !== "inactive"
+    ) {
+      console.log("Stopping recording...");
       mediaRecorderRef.current.stop();
-      setInterviewState(prev => ({ ...prev, isRecording: false }));
-      
-      // Simulate AI processing
-      setIsProcessing(true);
-      setTimeout(() => {
-        const mockTranscripts = [
-          "I have over 5 years of experience in software development, specializing in full-stack web applications. I'm passionate about creating user-friendly solutions and have led several successful projects in my current role.",
-          "In my previous role, I faced a challenging deadline for a client project. I organized daily standups, prioritized features, and collaborated closely with the design team to deliver on time while maintaining quality.",
-          "I handle pressure by breaking down tasks into manageable chunks, maintaining clear communication with stakeholders, and using time management techniques like the Pomodoro method to stay focused.",
-          "In 5 years, I see myself in a senior technical leadership role, mentoring junior developers and driving architectural decisions. This role aligns perfectly with my goal to grow both technically and as a leader."
-        ];
-        
-        const mockFeedbacks = [
-          "Great response! You provided specific details about your experience and showed enthusiasm. Consider adding more quantifiable achievements to strengthen your answer.",
-          "Excellent use of the STAR method! You clearly outlined the situation, your actions, and the results. Your problem-solving approach comes through well.",
-          "Good examples of stress management techniques. Your response shows self-awareness and practical solutions. Consider mentioning how you communicate with team members during high-pressure situations.",
-          "Strong career vision that aligns well with growth opportunities. Your ambition is clear and realistic. Consider mentioning specific skills you want to develop."
-        ];
-
-        const mockScores = [85, 92, 78, 88];
-        const mockGrades = ['B+', 'A-', 'B', 'B+'];
-        
-        const currentIndex = interviewState.currentQuestion;
-        setTranscript(mockTranscripts[currentIndex]);
-        setAiFeedback(mockFeedbacks[currentIndex]);
-        setConfidenceScore(mockScores[currentIndex]);
-        setGradeScore(mockGrades[currentIndex]);
-        setIsProcessing(false);
-      }, 2000);
+      // The actual processing happens in the onstop event handler above
     }
   };
-
   const toggleMic = () => {
-    setInterviewState(prev => ({ ...prev, micEnabled: !prev.micEnabled }));
+    setInterviewState((prev) => ({ ...prev, micEnabled: !prev.micEnabled }));
   };
 
   const toggleVideo = () => {
-    setInterviewState(prev => ({ ...prev, videoEnabled: !prev.videoEnabled }));
+    setInterviewState((prev) => ({
+      ...prev,
+      videoEnabled: !prev.videoEnabled,
+    }));
   };
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${mins.toString().padStart(2, "0")}:${secs
+      .toString()
+      .padStart(2, "0")}`;
   };
 
   const currentQuestion = mockQuestions[interviewState.currentQuestion];
 
+  const avatarUrl =
+    "https://models.readyplayer.me/686d7625a4b84d7afe402e50.glb";
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  useEffect(() => {
+    const handleAudioStateChange = (event: CustomEvent) => {
+      setIsPlaying(event.detail.isPlaying);
+    };
+
+    window.addEventListener(
+      "audio-state-changed",
+      handleAudioStateChange as EventListener
+    );
+    return () =>
+      window.removeEventListener(
+        "audio-state-changed",
+        handleAudioStateChange as EventListener
+      );
+  }, []);
+
+  const handleButtonClick = () => {
+    const evt = new Event("trigger-audio-play");
+    window.dispatchEvent(evt);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <DashboardHeader />
-      
+
       <main className="container-spacing py-10">
         {!interviewState.isActive ? (
           // Pre-Interview Setup
@@ -239,7 +379,8 @@ export default function InterviewPage() {
             <div className="text-center mb-12">
               <h1 className="text-4xl font-bold mb-6">AI Interview Practice</h1>
               <p className="text-muted-foreground text-lg leading-relaxed max-w-2xl mx-auto">
-                Practice with our AI interviewer and get real-time feedback on your performance
+                Practice with our AI interviewer and get real-time feedback on
+                your performance
               </p>
             </div>
 
@@ -252,37 +393,51 @@ export default function InterviewPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="relative aspect-video bg-muted rounded-lg overflow-hidden">
-                    {interviewState.videoEnabled ? (
-                      <Webcam
-                        ref={webcamRef}
-                        audio={interviewState.micEnabled}
-                        className="w-full h-full object-cover"
-                        mirrored
-                      />
-                    ) : (
-                      <div className="flex items-center justify-center h-full">
-                        <VideoOff className="h-16 w-16 text-muted-foreground" />
+                  <div className="relative grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Webcam View */}
+                    <div className="aspect-video bg-muted rounded-lg overflow-hidden">
+                      {interviewState.videoEnabled ? (
+                        <Webcam
+                          ref={webcamRef}
+                          muted
+                          audio={interviewState.micEnabled}
+                          className="w-full h-full object-cover"
+                          mirrored
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center h-full">
+                          <VideoOff className="h-16 w-16 text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Avatar 3D Preview */}
+                    <div className="aspect-video relative bg-black rounded-lg overflow-hidden">
+                      <Canvas camera={{ position: [0, 0.5, 3], fov: 20 }}>
+                        <ambientLight intensity={0.5} />
+                        <directionalLight
+                          position={[3, 5, 2]}
+                          intensity={1.2}
+                        />
+                        <Environment preset="city" />
+                        <Avatar url={avatarUrl} />
+                        <OrbitControls
+                          enableZoom={false}
+                          enablePan={false}
+                          enableRotate={false}
+                        />
+                      </Canvas>
+                      <div className="absolute bottom-4 w-full text-center z-10">
+                        <button
+                          id="trigger-btn"
+                          onClick={handleButtonClick}
+                          className={`px-6 py-2 rounded-full text-white text-sm font-semibold shadow-md transition ${
+                            isPlaying ? "bg-red-500" : "bg-teal-500"
+                          }`}
+                        >
+                          {isPlaying ? "STOP" : "TALK"}
+                        </button>
                       </div>
-                    )}
-                    
-                    <div className="absolute bottom-6 left-6 right-6 flex justify-center space-x-4">
-                      <Button
-                        size="sm"
-                        variant={interviewState.micEnabled ? "default" : "destructive"}
-                        onClick={toggleMic}
-                        className="px-4 py-2"
-                      >
-                        {interviewState.micEnabled ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant={interviewState.videoEnabled ? "default" : "destructive"}
-                        onClick={toggleVideo}
-                        className="px-4 py-2"
-                      >
-                        {interviewState.videoEnabled ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
-                      </Button>
                     </div>
                   </div>
                 </CardContent>
@@ -297,27 +452,44 @@ export default function InterviewPage() {
                 </CardHeader>
                 <CardContent className="space-y-8">
                   <div>
-                    <h3 className="font-semibold mb-4 text-lg">Session Overview</h3>
+                    <h3 className="font-semibold mb-4 text-lg">
+                      Session Overview
+                    </h3>
                     <div className="space-y-3">
                       <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Questions:</span>
-                        <span className="text-sm font-medium">{mockQuestions.length}</span>
+                        <span className="text-sm text-muted-foreground">
+                          Questions:
+                        </span>
+                        <span className="text-sm font-medium">
+                          {mockQuestions.length}
+                        </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Estimated Time:</span>
-                        <span className="text-sm font-medium">15-20 minutes</span>
+                        <span className="text-sm text-muted-foreground">
+                          Estimated Time:
+                        </span>
+                        <span className="text-sm font-medium">
+                          15-20 minutes
+                        </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Difficulty:</span>
+                        <span className="text-sm text-muted-foreground">
+                          Difficulty:
+                        </span>
                         <Badge variant="secondary">Mixed</Badge>
                       </div>
                     </div>
                   </div>
 
                   <div>
-                    <h3 className="font-semibold mb-4 text-lg">What to Expect</h3>
+                    <h3 className="font-semibold mb-4 text-lg">
+                      What to Expect
+                    </h3>
                     <ul className="text-sm text-muted-foreground space-y-2 leading-relaxed">
-                      <li>• AI-generated questions based on common interview patterns</li>
+                      <li>
+                        • AI-generated questions based on common interview
+                        patterns
+                      </li>
                       <li>• Real-time speech-to-text transcription</li>
                       <li>• Instant feedback on your responses</li>
                       <li>• Performance scoring and improvement suggestions</li>
@@ -344,14 +516,25 @@ export default function InterviewPage() {
               <div className="flex items-center space-x-6">
                 <div className="flex items-center space-x-3">
                   <Clock className="h-6 w-6 text-muted-foreground" />
-                  <span className="font-mono text-xl">{formatTime(interviewState.timeElapsed)}</span>
+                  <span className="font-mono text-xl">
+                    {formatTime(interviewState.timeElapsed)}
+                  </span>
                 </div>
                 <div className="flex items-center space-x-3">
-                  <span className="text-sm text-muted-foreground">Question</span>
-                  <Badge className="px-3 py-1">{interviewState.currentQuestion + 1} of {interviewState.totalQuestions}</Badge>
+                  <span className="text-sm text-muted-foreground">
+                    Question
+                  </span>
+                  <Badge className="px-3 py-1">
+                    {interviewState.currentQuestion + 1} of{" "}
+                    {interviewState.totalQuestions}
+                  </Badge>
                 </div>
               </div>
-              <Button variant="destructive" onClick={endInterview} className="px-6">
+              <Button
+                variant="destructive"
+                onClick={endInterview}
+                className="px-6"
+              >
                 <Square className="mr-2 h-4 w-4" />
                 End Interview
               </Button>
@@ -360,6 +543,45 @@ export default function InterviewPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
               {/* Video Feed */}
               <div className="lg:col-span-2">
+                {/* Avatar for Active Interview */}
+                <Card className="mt-6">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="flex items-center text-xl">
+                      <Video className="mr-3 h-6 w-6" />
+                      AI Interviewer Avatar
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden">
+                      <Canvas camera={{ position: [0, 0.5, 3], fov: 20 }}>
+                        <ambientLight intensity={0.5} />
+                        <directionalLight
+                          position={[3, 5, 2]}
+                          intensity={1.2}
+                        />
+                        <Environment preset="city" />
+                        <Avatar url={avatarUrl} />
+                        <OrbitControls
+                          enableZoom={false}
+                          enablePan={false}
+                          enableRotate={false}
+                        />
+                      </Canvas>
+                      <div className="absolute bottom-4 w-full text-center z-10">
+                        <button
+                          id="trigger-btn"
+                          onClick={handleButtonClick}
+                          className={`px-6 py-2 rounded-full text-white text-sm font-semibold shadow-md transition ${
+                            isPlaying ? "bg-red-500" : "bg-teal-500"
+                          }`}
+                        >
+                          {isPlaying ? "STOP" : "ASK"}
+                        </button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
                 <Card className="mb-8">
                   <CardContent className="p-0">
                     <div className="relative aspect-video bg-muted rounded-lg overflow-hidden">
@@ -375,32 +597,56 @@ export default function InterviewPage() {
                           <VideoOff className="h-20 w-20 text-muted-foreground" />
                         </div>
                       )}
-                      
+
                       {interviewState.isRecording && (
                         <div className="absolute top-6 right-6 flex items-center space-x-2 bg-red-500 text-white px-4 py-2 rounded-full">
                           <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
                           <span className="text-sm font-medium">Recording</span>
                         </div>
                       )}
-                      
+
                       <div className="absolute bottom-6 left-6 right-6 flex justify-center space-x-4">
                         <Button
-                          variant={interviewState.micEnabled ? "default" : "destructive"}
+                          variant={
+                            interviewState.micEnabled
+                              ? "default"
+                              : "destructive"
+                          }
                           onClick={toggleMic}
                           className="px-4"
                         >
-                          {interviewState.micEnabled ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
+                          {interviewState.micEnabled ? (
+                            <Mic className="h-4 w-4" />
+                          ) : (
+                            <MicOff className="h-4 w-4" />
+                          )}
                         </Button>
                         <Button
-                          variant={interviewState.videoEnabled ? "default" : "destructive"}
+                          variant={
+                            interviewState.videoEnabled
+                              ? "default"
+                              : "destructive"
+                          }
                           onClick={toggleVideo}
                           className="px-4"
                         >
-                          {interviewState.videoEnabled ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
+                          {interviewState.videoEnabled ? (
+                            <Video className="h-4 w-4" />
+                          ) : (
+                            <VideoOff className="h-4 w-4" />
+                          )}
                         </Button>
                         <Button
-                          variant={interviewState.isRecording ? "destructive" : "default"}
-                          onClick={interviewState.isRecording ? stopRecording : startRecording}
+                          variant={
+                            interviewState.isRecording
+                              ? "destructive"
+                              : "default"
+                          }
+                          onClick={
+                            interviewState.isRecording
+                              ? stopRecording
+                              : startRecording
+                          }
                           className="px-6"
                         >
                           {interviewState.isRecording ? (
@@ -430,7 +676,9 @@ export default function InterviewPage() {
                       {isProcessing ? (
                         <div className="flex items-center space-x-3">
                           <div className="animate-spin rounded-full h-5 w-5 border-2 border-primary border-t-transparent" />
-                          <span className="text-sm text-muted-foreground">Processing your response...</span>
+                          <span className="text-sm text-muted-foreground">
+                            Processing your response...
+                          </span>
                         </div>
                       ) : transcript ? (
                         <p className="text-sm leading-relaxed">{transcript}</p>
@@ -454,8 +702,15 @@ export default function InterviewPage() {
                         <Brain className="mr-3 h-6 w-6" />
                         AI Interviewer
                       </CardTitle>
-                      <Badge variant={currentQuestion.difficulty === 'Easy' ? 'secondary' : 
-                                   currentQuestion.difficulty === 'Medium' ? 'default' : 'destructive'}>
+                      <Badge
+                        variant={
+                          currentQuestion.difficulty === "Easy"
+                            ? "secondary"
+                            : currentQuestion.difficulty === "Medium"
+                            ? "default"
+                            : "destructive"
+                        }
+                      >
                         {currentQuestion.difficulty}
                       </Badge>
                     </div>
@@ -464,14 +719,21 @@ export default function InterviewPage() {
                     <div className="space-y-6">
                       <div>
                         <div className="flex items-center justify-between mb-3">
-                          <p className="text-sm text-muted-foreground">Question {interviewState.currentQuestion + 1}:</p>
-                          <Badge variant="outline">{currentQuestion.category}</Badge>
+                          <p className="text-sm text-muted-foreground">
+                            Question {interviewState.currentQuestion + 1}:
+                          </p>
+                          <Badge variant="outline">
+                            {currentQuestion.category}
+                          </Badge>
                         </div>
-                        <p className="font-medium leading-relaxed text-lg mb-4">{currentQuestion.text}</p>
-                        
+                        <p className="font-medium leading-relaxed text-lg mb-4">
+                          {currentQuestion.text}
+                        </p>
+
                         <div className="flex items-center text-sm text-muted-foreground mb-4">
                           <Clock className="w-4 h-4 mr-1" />
-                          {Math.floor(currentQuestion.timeLimit / 60)} minutes recommended
+                          {Math.floor(currentQuestion.timeLimit / 60)} minutes
+                          recommended
                         </div>
 
                         {/* Tips Section */}
@@ -479,14 +741,22 @@ export default function InterviewPage() {
                           <div className="flex items-start space-x-2">
                             <Lightbulb className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
                             <div>
-                              <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1">💡 Tip:</p>
-                              <p className="text-sm text-blue-800 dark:text-blue-200">{currentQuestion.tips}</p>
+                              <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1">
+                                💡 Tip:
+                              </p>
+                              <p className="text-sm text-blue-800 dark:text-blue-200">
+                                {currentQuestion.tips}
+                              </p>
                             </div>
                           </div>
                         </div>
                       </div>
-                      <Progress 
-                        value={(interviewState.currentQuestion + 1) / interviewState.totalQuestions * 100} 
+                      <Progress
+                        value={
+                          ((interviewState.currentQuestion + 1) /
+                            interviewState.totalQuestions) *
+                          100
+                        }
                         className="w-full"
                       />
                     </div>
@@ -511,28 +781,39 @@ export default function InterviewPage() {
                         <CardContent>
                           <div className="space-y-4">
                             <div className="p-4 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
-                              <p className="text-sm leading-relaxed text-green-800 dark:text-green-200">{aiFeedback}</p>
+                              <p className="text-sm leading-relaxed text-green-800 dark:text-green-200">
+                                {aiFeedback}
+                              </p>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4 text-center">
                               <div className="p-3 bg-muted/50 rounded-lg">
-                                <p className="text-2xl font-bold text-blue-600">{confidenceScore}%</p>
-                                <p className="text-xs text-muted-foreground">Confidence</p>
+                                <p className="text-2xl font-bold text-blue-600">
+                                  {confidenceScore}%
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  Confidence
+                                </p>
                               </div>
                               <div className="p-3 bg-muted/50 rounded-lg">
-                                <p className="text-2xl font-bold text-green-600">{gradeScore}</p>
-                                <p className="text-xs text-muted-foreground">Grade</p>
+                                <p className="text-2xl font-bold text-green-600">
+                                  {gradeScore}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  Grade
+                                </p>
                               </div>
                             </div>
 
-                            <Button 
-                              onClick={nextQuestion} 
+                            <Button
+                              onClick={nextQuestion}
                               className="w-full"
                               disabled={!aiFeedback}
                             >
-                              {interviewState.currentQuestion < interviewState.totalQuestions - 1 ? 
-                                'Next Question' : 'Finish Interview'
-                              }
+                              {interviewState.currentQuestion <
+                              interviewState.totalQuestions - 1
+                                ? "Next Question"
+                                : "Finish Interview"}
                             </Button>
                           </div>
                         </CardContent>
@@ -544,7 +825,9 @@ export default function InterviewPage() {
                 {/* Interview Progress */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">Interview Progress</CardTitle>
+                    <CardTitle className="text-lg">
+                      Interview Progress
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
@@ -555,8 +838,8 @@ export default function InterviewPage() {
                             index === interviewState.currentQuestion
                               ? "bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800"
                               : completedQuestions[index]
-                                ? "bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800"
-                                : "bg-muted/30"
+                              ? "bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800"
+                              : "bg-muted/30"
                           }`}
                         >
                           <div
@@ -564,8 +847,8 @@ export default function InterviewPage() {
                               index === interviewState.currentQuestion
                                 ? "bg-blue-600 text-white"
                                 : completedQuestions[index]
-                                  ? "bg-green-600 text-white"
-                                  : "bg-muted text-muted-foreground"
+                                ? "bg-green-600 text-white"
+                                : "bg-muted text-muted-foreground"
                             }`}
                           >
                             {completedQuestions[index] ? (
@@ -575,14 +858,22 @@ export default function InterviewPage() {
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{q.category}</p>
+                            <p className="text-sm font-medium truncate">
+                              {q.category}
+                            </p>
                             <p className="text-xs text-muted-foreground">
-                              {Math.floor(q.timeLimit / 60)} min • {q.difficulty}
+                              {Math.floor(q.timeLimit / 60)} min •{" "}
+                              {q.difficulty}
                             </p>
                           </div>
-                          <Badge 
-                            variant={q.difficulty === 'Easy' ? 'secondary' : 
-                                   q.difficulty === 'Medium' ? 'default' : 'destructive'}
+                          <Badge
+                            variant={
+                              q.difficulty === "Easy"
+                                ? "secondary"
+                                : q.difficulty === "Medium"
+                                ? "default"
+                                : "destructive"
+                            }
                             className="text-xs"
                           >
                             {q.difficulty}

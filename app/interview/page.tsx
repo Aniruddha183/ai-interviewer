@@ -305,6 +305,12 @@ export default function InterviewPage() {
       mediaRecorder.start(1000); // Record in 1-second chunks
       setInterviewState((prev) => ({ ...prev, isRecording: true }));
       console.log("Recording started with MIME type:", selectedMimeType);
+      const currentQ = mockQuestions[interviewState.currentQuestion]?.text;
+      window.dispatchEvent(
+        new CustomEvent("avatar-speak-question", {
+          detail: { question: currentQ },
+        })
+      );
     }
   };
 
@@ -340,7 +346,7 @@ export default function InterviewPage() {
   const currentQuestion = mockQuestions[interviewState.currentQuestion];
 
   const avatarUrl =
-    "https://models.readyplayer.me/686d7625a4b84d7afe402e50.glb";
+    "https://models.readyplayer.me/687174cf742cffebe6bcf2dd.glb";
   const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
@@ -399,7 +405,7 @@ export default function InterviewPage() {
                       {interviewState.videoEnabled ? (
                         <Webcam
                           ref={webcamRef}
-                          muted
+                          muted={true}
                           audio={interviewState.micEnabled}
                           className="w-full h-full object-cover"
                           mirrored
@@ -419,7 +425,10 @@ export default function InterviewPage() {
                           position={[3, 5, 2]}
                           intensity={1.2}
                         />
-                        <Environment preset="city" />
+                        <Environment
+                          files="/lib/poly_haven_studio_4k.hdr"
+                          background
+                        />
                         <Avatar url={avatarUrl} />
                         <OrbitControls
                           enableZoom={false}
@@ -544,7 +553,7 @@ export default function InterviewPage() {
               {/* Video Feed */}
               <div className="lg:col-span-2">
                 {/* Avatar for Active Interview */}
-                <Card className="mt-6">
+                <Card className="mt-">
                   <CardHeader className="pb-4">
                     <CardTitle className="flex items-center text-xl">
                       <Video className="mr-3 h-6 w-6" />
@@ -559,7 +568,11 @@ export default function InterviewPage() {
                           position={[3, 5, 2]}
                           intensity={1.2}
                         />
-                        <Environment preset="city" />
+                        <Environment
+                          backgroundIntensity={0.2}
+                          files="/lib/poly_haven_studio_4k.hdr"
+                          background
+                        />
                         <Avatar url={avatarUrl} />
                         <OrbitControls
                           enableZoom={false}
@@ -567,45 +580,26 @@ export default function InterviewPage() {
                           enableRotate={false}
                         />
                       </Canvas>
-                      <div className="absolute bottom-4 w-full text-center z-10">
-                        <button
-                          id="trigger-btn"
-                          onClick={handleButtonClick}
-                          className={`px-6 py-2 rounded-full text-white text-sm font-semibold shadow-md transition ${
-                            isPlaying ? "bg-red-500" : "bg-teal-500"
-                          }`}
-                        >
-                          {isPlaying ? "STOP" : "ASK"}
-                        </button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="mb-8">
-                  <CardContent className="p-0">
-                    <div className="relative aspect-video bg-muted rounded-lg overflow-hidden">
-                      {interviewState.videoEnabled ? (
-                        <Webcam
-                          ref={webcamRef}
-                          audio={interviewState.micEnabled}
-                          className="w-full h-full object-cover"
-                          mirrored
-                        />
-                      ) : (
-                        <div className="flex items-center justify-center h-full">
-                          <VideoOff className="h-20 w-20 text-muted-foreground" />
+                      {/* Webcam overlay at bottom right */}
+                      {interviewState.videoEnabled && (
+                        <div className="absolute bottom-4 right-4 w-44 h-28 rounded-lg overflow-hidden border-2 border-neutral-700 shadow-lg bg-black/80">
+                          <Webcam
+                            ref={webcamRef}
+                            muted={true}
+                            audio={interviewState.micEnabled}
+                            className="w-full h-full object-cover"
+                            mirrored
+                          />
+                          {interviewState.isRecording && (
+                            <div className="absolute top-2 right-2 flex items-center space-x-2 bg-red-500 text-white px-2 py-1 rounded-full text-xs">
+                              <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                              <span>Recording</span>
+                            </div>
+                          )}
                         </div>
                       )}
-
-                      {interviewState.isRecording && (
-                        <div className="absolute top-6 right-6 flex items-center space-x-2 bg-red-500 text-white px-4 py-2 rounded-full">
-                          <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-                          <span className="text-sm font-medium">Recording</span>
-                        </div>
-                      )}
-
-                      <div className="absolute bottom-6 left-6 right-6 flex justify-center space-x-4">
+                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-4 z-10">
+                        {" "}
                         <Button
                           variant={
                             interviewState.micEnabled
@@ -667,7 +661,7 @@ export default function InterviewPage() {
                 </Card>
 
                 {/* Transcript */}
-                <Card>
+                <Card className="mt-4">
                   <CardHeader className="pb-4">
                     <CardTitle className="text-xl">Live Transcript</CardTitle>
                   </CardHeader>

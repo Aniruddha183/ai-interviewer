@@ -169,13 +169,12 @@
 // useGLTF.preload("https://models.readyplayer.me/686d7625a4b84d7afe402e50.glb");
 
 //new code
-
 "use client";
 import React, { useState, useEffect, Suspense, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Html, useGLTF } from "@react-three/drei";
+import * as THREE from "three";
 
-// Public domain speech sample - you can replace this with any speech audio
 const audioUrl =
   "https://www.voiptroubleshooter.com/open_speech/american/OSR_us_000_0010_8k.wav";
 
@@ -196,31 +195,23 @@ function AvatarModel({
   const blinkTimerRef = useRef(0);
   const idleTimerRef = useRef(0);
   const nextBlinkTime = useRef(2 + Math.random() * 3);
+  const gestureTimerRef = useRef(0);
 
-  // Hide hands and arms, keep only head and body parts we want
+  // Show hands and arms for sitting pose
   useEffect(() => {
     if (scene) {
       scene.traverse((child: any) => {
         if (child.isMesh) {
-          // Hide hand and arm related meshes
+          // Make sure hands and arms are visible for sitting pose
           if (
             child.name.includes("Hand") ||
             child.name.includes("Arm") ||
             child.name.includes("hand") ||
-            child.name.includes("arm")
-          ) {
-            child.visible = false;
-          }
-          // Also hide specific ReadyPlayerMe hand parts
-          if (
+            child.name.includes("arm") ||
             child.name === "Wolf3D_Hands" ||
-            child.name === "Wolf3D_Arms" ||
-            child.name.includes("LeftHand") ||
-            child.name.includes("RightHand") ||
-            child.name.includes("LeftArm") ||
-            child.name.includes("RightArm")
+            child.name === "Wolf3D_Arms"
           ) {
-            child.visible = false;
+            child.visible = true;
           }
         }
       });
@@ -271,7 +262,7 @@ function AvatarModel({
 
     // --- BLINKING ---
     blinkTimerRef.current += delta;
-    const blinkDuration = 0.1; // total blink time
+    const blinkDuration = 0.1;
 
     const blinkTargets = [
       "eyeBlinkLeft",
@@ -298,40 +289,122 @@ function AvatarModel({
         }
       });
 
-      // reset after blink
       if (blinkProgress > 1) {
         blinkTimerRef.current = 0;
         nextBlinkTime.current = 2 + Math.random() * 3;
       }
     }
 
-    // --- IDLE HEAD MOTION ---
+    // --- SITTING POSE ANIMATIONS ---
     idleTimerRef.current += delta;
+    gestureTimerRef.current += delta;
 
-    if (!isPlaying) {
-      const bobIntensity = 0.002;
-      const bobSpeed = 0.8;
-      scene.rotation.x =
-        Math.sin(idleTimerRef.current * bobSpeed) * bobIntensity;
-      scene.rotation.z =
-        Math.cos(idleTimerRef.current * bobSpeed * 0.7) * bobIntensity * 0.5;
+    // Subtle sitting posture movements
+    const sittingBob = Math.sin(idleTimerRef.current * 0.5) * 0.01;
+    const sittingLean = Math.cos(idleTimerRef.current * 0.3) * 0.005;
+
+    // Apply sitting movements
+    scene.rotation.x = sittingBob;
+    scene.rotation.z = sittingLean;
+
+    // Head movements for questioning behavior
+    if (isPlaying) {
+      const headTilt = Math.sin(gestureTimerRef.current * 1.2) * 0.08;
+      const headNod = Math.sin(gestureTimerRef.current * 2) * 0.03;
+
+      scene.rotation.y = headTilt;
+      scene.rotation.x += headNod;
     }
 
-    // --- EXPRESSION ---
-    const expressionTimer = idleTimerRef.current * 0.3;
+    // --- QUESTIONING EXPRESSIONS ---
+    const expressionTimer = idleTimerRef.current * 0.4;
 
+    // Raised eyebrows for questioning
     const browInnerUpIdx = headMesh.morphTargetDictionary?.["browInnerUp"];
-    if (browInnerUpIdx !== undefined)
+    if (browInnerUpIdx !== undefined) {
+      const browIntensity = isPlaying ? 0.15 : 0.05;
       headMesh.morphTargetInfluences[browInnerUpIdx] =
-        Math.sin(expressionTimer) * 0.05;
+        Math.sin(expressionTimer) * browIntensity + (isPlaying ? 0.1 : 0);
+    }
 
-    const cheekPuffIdx = headMesh.morphTargetDictionary?.["cheekPuff"];
-    if (cheekPuffIdx !== undefined)
-      headMesh.morphTargetInfluences[cheekPuffIdx] =
-        Math.cos(expressionTimer * 0.7) * 0.02;
+    // Slight smile for friendly questioning
+    const mouthSmileIdx = headMesh.morphTargetDictionary?.["mouthSmile"];
+    if (mouthSmileIdx !== undefined && !isPlaying) {
+      headMesh.morphTargetInfluences[mouthSmileIdx] =
+        Math.sin(expressionTimer * 0.7) * 0.08 + 0.05;
+    }
   });
 
-  return <primitive object={scene} scale={1.5} position={[0, -0.8, 0]} />;
+  // Position for sitting pose - adjusted for better framing
+  return (
+    <group>
+      <primitive
+        object={scene}
+        scale={1.3}
+        position={[0, -1.8, 0]}
+        rotation={[0, 0, 0]}
+      />
+    </group>
+  );
+}
+
+// Simple chair component - positioned to be visible
+function Chair() {
+  return (
+    <group position={[0, -2.2, 0.1]}>
+      {/* Chair seat */}
+      <mesh position={[0, -0.2, 0]}>
+        <boxGeometry args={[1.2, 0.1, 1]} />
+        <meshStandardMaterial color="#8B4513" />
+      </mesh>
+      {/* Chair back */}
+      <mesh position={[0, 0.3, 0.4]}>
+        <boxGeometry args={[1.2, 1.2, 0.1]} />
+        <meshStandardMaterial color="#8B4513" />
+      </mesh>
+      {/* Chair legs */}
+      {(
+        [
+          [-0.5, -0.7, -0.4],
+          [0.5, -0.7, -0.4],
+          [-0.5, -0.7, 0.4],
+          [0.5, -0.7, 0.4],
+        ] as [number, number, number][]
+      ).map((pos, i) => (
+        <mesh key={i} position={pos}>
+          <cylinderGeometry args={[0.04, 0.04, 0.5]} />
+          <meshStandardMaterial color="#654321" />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+// Desk component - positioned to be visible in frame
+function Desk() {
+  return (
+    <group position={[0, -2.5, -0.3]}>
+      {/* Desk top */}
+      <mesh position={[0, 0, 0]}>
+        <boxGeometry args={[2.5, 0.1, 1.2]} />
+        <meshStandardMaterial color="#DEB887" />
+      </mesh>
+      {/* Desk legs */}
+      {(
+        [
+          [-1.0, -0.5, -0.5],
+          [1.0, -0.5, -0.5],
+          [-1.0, -0.5, 0.5],
+          [1.0, -0.5, 0.5],
+        ] as [number, number, number][]
+      ).map((pos, i) => (
+        <mesh key={i} position={pos}>
+          <cylinderGeometry args={[0.05, 0.05, 1]} />
+          <meshStandardMaterial color="#8B7355" />
+        </mesh>
+      ))}
+    </group>
+  );
 }
 
 export default function Avatar({ url }: { url: string }) {
@@ -342,7 +415,6 @@ export default function Avatar({ url }: { url: string }) {
     const audioEl = new Audio(audioUrl);
     audioEl.onended = () => {
       setIsPlaying(false);
-      // Dispatch event to update external button
       window.dispatchEvent(
         new CustomEvent("audio-state-changed", { detail: { isPlaying: false } })
       );
@@ -387,11 +459,101 @@ export default function Avatar({ url }: { url: string }) {
     return () => window.removeEventListener("trigger-audio-play", toggle);
   }, [isPlaying, audio]);
 
+  useEffect(() => {
+    const handleSpeakQuestion = (e: any) => {
+      const question = e.detail?.question;
+      if (!question) return;
+
+      const synth = window.speechSynthesis;
+      const utter = new window.SpeechSynthesisUtterance(question);
+
+      let voices = synth.getVoices();
+      if (!voices || voices.length === 0) {
+        synth.onvoiceschanged = () => {
+          voices = synth.getVoices();
+          setFemaleVoiceAndSpeak();
+        };
+      } else {
+        setFemaleVoiceAndSpeak();
+      }
+
+      function setFemaleVoiceAndSpeak() {
+        const femaleVoice =
+          voices.find(
+            (v) =>
+              v.lang.startsWith("en") && v.name.toLowerCase().includes("female")
+          ) ||
+          voices.find(
+            (v) =>
+              v.lang.startsWith("en") && v.name.toLowerCase().includes("woman")
+          ) ||
+          voices.find(
+            (v) =>
+              v.lang.startsWith("en") && v.name.toLowerCase().includes("zira")
+          ) ||
+          voices.find(
+            (v) =>
+              v.lang.startsWith("en") && v.name.toLowerCase().includes("susan")
+          ) ||
+          voices.find(
+            (v) =>
+              v.lang.startsWith("en") &&
+              v.name.toLowerCase().includes("samantha")
+          ) ||
+          voices.find(
+            (v) =>
+              v.lang.startsWith("en") && v.name.toLowerCase().includes("karen")
+          ) ||
+          voices.find(
+            (v) =>
+              v.lang.startsWith("en") && v.name.toLowerCase().includes("linda")
+          ) ||
+          voices.find((v) => v.lang.startsWith("en"));
+
+        if (femaleVoice) {
+          utter.voice = femaleVoice;
+        }
+
+        utter.onstart = () => {
+          setIsPlaying(true);
+          window.dispatchEvent(
+            new CustomEvent("audio-state-changed", {
+              detail: { isPlaying: true },
+            })
+          );
+        };
+
+        utter.onend = () => {
+          setIsPlaying(false);
+          window.dispatchEvent(
+            new CustomEvent("audio-state-changed", {
+              detail: { isPlaying: false },
+            })
+          );
+        };
+
+        synth.speak(utter);
+      }
+    };
+
+    window.addEventListener("avatar-speak-question", handleSpeakQuestion);
+    return () =>
+      window.removeEventListener("avatar-speak-question", handleSpeakQuestion);
+  }, []);
+
   return (
     <Suspense fallback={null}>
+      {/* Chair */}
+      <Chair />
+
+      {/* Desk */}
+      <Desk />
+
+      {/* Avatar */}
       <AvatarModel url={url} isPlaying={isPlaying} audio={audio} />
     </Suspense>
   );
 }
 
-useGLTF.preload("https://models.readyplayer.me/686d7625a4b84d7afe402e50.glb");
+useGLTF.preload("https://models.readyplayer.me/68716fa6f439768e5442bdb2.glb");
+// main chick: https://models.readyplayer.me/686d7625a4b84d7afe402e50.glb
